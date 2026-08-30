@@ -2,6 +2,7 @@ use std::env;
 use std::fs;
 use flate2::read::ZlibDecoder;
 use std::io::Read;
+use sha1::Digest;
 
 fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
     let hash = &args[3];
@@ -29,23 +30,15 @@ fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
 fn hash_object(args: Vec<String>) -> Result<(), std::io::Error> {
     let file_path = &args[3];
     let binding = fs::read(file_path)?;
-    let mut content = String::from_utf8_lossy(&binding);
+    let content = String::from_utf8_lossy(&binding);
+    let header = format!("blob {}\0", content.len());
+    let mut object = header.into_bytes();
+    object.extend_from_slice(&content);
     print!("This is the content: {}", &content);
-    // let header = format!("blob {}\0", content.len());
-    // let mut store = Vec::new();
-    // store.extend_from_slice(header.as_bytes());
-    // store.extend_from_slice(&content);
-    // let hash = sha1::Sha1::from(&store).hexdigest();
-    // let dir = &hash[0..2];
-    // let file = &hash[2..];
-    // fs::create_dir_all(format!(".git/objects/{}", dir))?;
-    // let compressed_content = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default())
-    //     .write_all(&store)
-    //     .unwrap()
-    //     .finish()
-    //     .unwrap();
-    // fs::write(format!(".git/objects/{}/{}", dir, file), compressed_content)?;
-    // println!("{}", hash);
+    let mut hasher = sha1::Sha1::new();
+    hasher.update(&object);
+    let hash = hasher.finalize();
+    print("{}", hash);
     Ok(())
 }
 

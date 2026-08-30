@@ -28,8 +28,8 @@ fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
 
 fn hash_object(args: Vec<String>) -> Result<(), std::io::Error> {
     let file_path = &args[3];
-    let content = fs::read(file_path)?;
-    print!("This is the content: {}", String::from_utf8_lossy(&content));
+    let content = String::from_utf8_lossy(fs::read(file_path)?);
+    print!("This is the content: {}", &content);
     // let header = format!("blob {}\0", content.len());
     // let mut store = Vec::new();
     // store.extend_from_slice(header.as_bytes());

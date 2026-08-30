@@ -45,7 +45,7 @@ fn hash_object(args: Vec<String>) -> Result<(), std::io::Error> {
     //     .unwrap();
     // fs::write(format!(".git/objects/{}/{}", dir, file), compressed_content)?;
     // println!("{}", hash);
-    // Ok(())
+    Ok(())
 }
 
 fn init() {

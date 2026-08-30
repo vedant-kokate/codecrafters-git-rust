@@ -36,15 +36,15 @@ fn hash_object(args: Vec<String>) -> Result<(), std::io::Error> {
     object.extend_from_slice(&content);
     let mut encoder = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
     encoder.write_all(&object)?;
-    let object = encoder.finish()?;
+    let compressed_object = encoder.finish()?;
     let mut hasher = sha1::Sha1::new();
     hasher.update(&object);
     let hash = hasher.finalize();
     println!("{:x}", hash);
+    let hash = format!("{:x}", hash);
     fs::create_dir(format!(".git/objects/{}", &hash[0..2]))?;
     let path = format!(".git/objects/{}/{}",&hash[0..2],&hash[2..]);
     fs::write(path, compressed_object)?;
-
     Ok(())
 }
 

@@ -26,6 +26,28 @@ fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
     Ok(())
 }
 
+fn hash_object(args: Vec<String>) -> Result<(), std::io::Error> {
+    let file_path = &args[3];
+    let content = fs::read(file_path)?;
+    println!("{:?}", content);
+    // let header = format!("blob {}\0", content.len());
+    // let mut store = Vec::new();
+    // store.extend_from_slice(header.as_bytes());
+    // store.extend_from_slice(&content);
+    // let hash = sha1::Sha1::from(&store).hexdigest();
+    // let dir = &hash[0..2];
+    // let file = &hash[2..];
+    // fs::create_dir_all(format!(".git/objects/{}", dir))?;
+    // let compressed_content = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default())
+    //     .write_all(&store)
+    //     .unwrap()
+    //     .finish()
+    //     .unwrap();
+    // fs::write(format!(".git/objects/{}/{}", dir, file), compressed_content)?;
+    // println!("{}", hash);
+    // Ok(())
+}
+
 fn init() {
     fs::create_dir(".git").unwrap();
     fs::create_dir(".git/objects").unwrap();
@@ -41,6 +63,7 @@ fn parse_command() -> Result<(), std::io::Error> {
     match args[1].as_str() {
         "init" => init(),
         "cat-file" => cat_file(args)?,
+        "hash-object" => hash_object(args)?,
         _ => println!("unknown command: {}", args[1]),
     }
     Ok(())

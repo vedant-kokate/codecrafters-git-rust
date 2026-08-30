@@ -12,6 +12,14 @@ fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
     let mut decoder = ZlibDecoder::new(&content[..]);
     let mut decoded_content = Vec::new();
     decoder.read_to_end(&mut decoded_content)?;
+    let mut header_end_index = 0;
+    for (i, byte) in decoded_content.iter().enumerate() {
+        if *byte == 0 {
+            header_end_index = i;
+            break;
+        }
+    }
+    decoder = decoder[header_end_index + 1..];
     println!("{:?}", decoded_content);
     Ok(())
 }

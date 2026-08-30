@@ -1,6 +1,6 @@
 use std::env;
 use std::fs;
-use::std:flate2::read::ZlibDecoder;
+use::std::flate2::read::ZlibDecoder;
 
 fn cat_file(args: Vec<String>) {
     let hash = &args[3];

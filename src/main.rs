@@ -29,16 +29,14 @@ fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
 
 fn hash_object(args: Vec<String>) -> Result<(), std::io::Error> {
     let file_path = &args[3];
-    let binding = fs::read(file_path)?;
-    let content = String::from_utf8_lossy(&binding);
+    let content = fs::read(file_path)?;
     let header = format!("blob {}\0", content.len());
     let mut object = header.into_bytes();
     object.extend_from_slice(&content);
-    print!("This is the content: {}", &content);
     let mut hasher = sha1::Sha1::new();
     hasher.update(&object);
     let hash = hasher.finalize();
-    print!("{}", hash);
+    println!("{:x}", hash);
     Ok(())
 }
 

@@ -19,8 +19,10 @@ fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
             break;
         }
     }
-    decoded_content = decoded_content[header_end_index + 1..];
-    println!("{:?}", decoded_content);
+    let content = &decoded_content[header_end_index + 1..];
+    let content = String::from_utf8_lossy(content);
+
+    println!("{:?}", content);
     Ok(())
 }
 

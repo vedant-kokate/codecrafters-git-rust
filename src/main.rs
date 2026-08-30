@@ -1,14 +1,17 @@
 use std::env;
 use std::fs;
+use::std:flate2::read::ZlibDecoder;
 
 fn cat_file(args: Vec<String>) {
     let hash = &args[3];
     let dir = &hash[0..2];
     let file = &hash[2..];
     let path = format!(".git/objects/{}/{}", dir, file);
-    let content = fs::read(path);
-    
-    println!("{}", content);
+    let content = fs::read(path)?;
+    let mut decoder = ZlibDecoder::new(&content[..]);
+    let mut decoded_content = Vec::new();
+    decoder.read_to_end(&mut decoded_content)?;
+    println!("{}", decoded_content);
 }
 
 fn init() {

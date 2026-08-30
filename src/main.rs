@@ -1,8 +1,9 @@
 use std::env;
 use std::fs;
 use flate2::read::ZlibDecoder;
+use std::io::Read;
 
-fn cat_file(args: Vec<String>) {
+fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
     let hash = &args[3];
     let dir = &hash[0..2];
     let file = &hash[2..];
@@ -12,6 +13,7 @@ fn cat_file(args: Vec<String>) {
     let mut decoded_content = Vec::new();
     decoder.read_to_end(&mut decoded_content)?;
     println!("{}", decoded_content);
+    Ok(())
 }
 
 fn init() {

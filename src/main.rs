@@ -6,7 +6,8 @@ fn cat_file(args: Vec<String>) {
     let dir = &hash[0..2];
     let file = &hash[2..];
     let path = format!(".git/objects/{}/{}", dir, file);
-    let content = fs::read_to_string(path).unwrap();
+    let content = fs::read(path);
+    
     println!("{}", content);
 }
 

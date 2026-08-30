@@ -36,8 +36,9 @@ fn parse_command() -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     eprintln!("Logs from your program will appear here!");
 
     parse_command()?;
+    Ok(())
 }

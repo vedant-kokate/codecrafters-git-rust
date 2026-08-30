@@ -12,7 +12,7 @@ fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
     let mut decoder = ZlibDecoder::new(&content[..]);
     let mut decoded_content = Vec::new();
     decoder.read_to_end(&mut decoded_content)?;
-    println!("{}", decoded_content);
+    println!("{:?}", decoded_content);
     Ok(())
 }
 
@@ -25,14 +25,15 @@ fn init() {
     println!("Initialized git directory");
 }
 
-fn parse_command() {
+fn parse_command() -> Result<(), std::io::Error> {
     let args: Vec<String> = env::args().collect();
 
     match args[1].as_str() {
         "init" => init(),
-        "cat-file" => cat_file(args),
+        "cat-file" => cat_file(args)?,
         _ => println!("unknown command: {}", args[1]),
     }
+    Ok(())
 }
 
 fn main() {

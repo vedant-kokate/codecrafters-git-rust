@@ -38,7 +38,7 @@ fn hash_object(args: Vec<String>) -> Result<(), std::io::Error> {
     let mut hasher = sha1::Sha1::new();
     hasher.update(&object);
     let hash = hasher.finalize();
-    print("{}", hash);
+    print!("{}", hash);
     Ok(())
 }
 

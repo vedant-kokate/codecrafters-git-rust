@@ -19,7 +19,7 @@ fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
             break;
         }
     }
-    decoder = decoder[header_end_index + 1..];
+    decoded_content = decoded_content[header_end_index + 1..];
     println!("{:?}", decoded_content);
     Ok(())
 }

@@ -22,7 +22,7 @@ fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
     let content = &decoded_content[header_end_index + 1..];
     let content = String::from_utf8_lossy(content);
 
-    println!("{}", content);
+    print!("{}", content);
     Ok(())
 }
 

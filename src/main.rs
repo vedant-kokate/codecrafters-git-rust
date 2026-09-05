@@ -450,7 +450,6 @@ fn checkout_commit(hash: &str, dir: &std::path::Path) -> Result<(), std::io::Err
     let tree_hash = tree_line.split(' ').nth(1).unwrap();
     println!("Checking out tree: {}", tree_hash);
     checkout_tree(tree_hash, dir)
-    Ok(())
 }
 
 fn clone(args: Vec<String>) -> Result<(), std::io::Error> {

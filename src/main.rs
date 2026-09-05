@@ -299,7 +299,29 @@ fn get_pack(url: &str, hash: &str) -> Result<Vec<u8>, std::io::Error> {
 }
 
 fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
-    let pack = get_pack(&url, &hash)?;
+    let url = &args[2];
+    let repo_name = &args[3];
+
+    fs::create_dir(repo_name)?;
+    env::set_current_dir(repo_name)?;
+    init();
+
+    // get hash from info/refs
+    let get_url = format!("{}.git/info/refs?service=git-upload-pack", url);
+    let body = get(&get_url)?;
+    let text = String::from_utf8(body).map_err(std::io::Error::other)?;
+
+    let mut hash = String::new();
+
+    for line in text.lines() {
+        if line.starts_with("003f") {
+            hash = line[4..44].to_string();
+            break;
+        }
+    }
+
+    let pack = get_pack(url, &hash)?;
+
     let object_count =
         u32::from_be_bytes(pack[8..12].try_into().unwrap());
 
@@ -307,10 +329,12 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
 
     for _ in 0..object_count {
         let (object_type, size, object_data) =
-            unpack_object(pack, &mut pos)?;
+            unpack_object(&pack, &mut pos)?;
 
         store_object(object_type, size, &object_data)?;
     }
+
+    Ok(())
 }
 
 

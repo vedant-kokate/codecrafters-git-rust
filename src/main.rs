@@ -242,12 +242,12 @@ fn parse_header(pack: &[u8], pos: &mut usize) -> (u8, usize) {
 
 fn unpack_object(pack: &[u8],pos: &mut usize,) -> Result<(u8, usize, Vec<u8>), std::io::Error> {
     let (object_type, size) = parse_header(pack, pos);
-
+    println!("pos={}, type={}, size={}", *pos, object_type, size);
     let mut decoder = ZlibDecoder::new(&pack[*pos..]);
     let mut object_data = Vec::new();
 
     decoder.read_to_end(&mut object_data)?;
-
+    
     *pos += decoder.total_in() as usize;
 
     Ok((object_type, size, object_data))

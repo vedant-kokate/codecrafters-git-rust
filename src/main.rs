@@ -5,13 +5,16 @@ use std::io::Read;
 use sha1::Digest;
 use std::io::Write;
 
-fn get(url: &str ) -> Result<String, std::io::Error> {
+fn get(url: &str) -> Result<Vec<u8>, std::io::Error> {
     let response = reqwest::blocking::Client::new()
         .get(url)
         .send()
         .map_err(std::io::Error::other)?;
 
-    response.bytes().map_err(std::io::Error::other)
+    response
+        .bytes()
+        .map(|b| b.to_vec())
+        .map_err(std::io::Error::other)
 }
 
 fn get_file_content_from_hash(hash: &str) -> Result<Vec<u8>, std::io::Error> {
@@ -203,7 +206,7 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
 
     let get_url = format!("{}.git/info/refs?service=git-upload-pack", url);
     let body = get(&get_url)?;
-    println!("Body: {}", body);
+    println!("Body: {:?}", body);
 
     Ok(())
 }

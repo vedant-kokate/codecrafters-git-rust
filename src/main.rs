@@ -443,7 +443,7 @@ fn read_object(hash: &str) -> Result<(String, Vec<u8>), std::io::Error> {
 }
 
 
-fn checkout_commit(hash: &str, dir: &std::path::Path) -> Result<(), std::io::Error> {
+fn checkout_commit(commit_hash: &str, dir: &std::path::Path) -> Result<(), std::io::Error> {
     let (_, content) = read_object(commit_hash)?;
     let content_str = String::from_utf8_lossy(&content);
     let tree_line = content_str.lines().next().unwrap(); // "tree <hash>"

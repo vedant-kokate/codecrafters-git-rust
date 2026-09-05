@@ -247,7 +247,7 @@ fn unpack_object(pack: &[u8], pos: &mut usize,) -> Result<(u8, usize, Vec<u8>, O
         let hash = &pack[*pos..*pos + 20];
         *pos += 20;
 
-        base_hash = base_hash = Some(hash.iter().map(|b| format!("{:02x}", b)).collect());
+        base_hash = Some(hash.iter().map(|b| format!("{:02x}", b)).collect());
     }
 
     let mut decoder = ZlibDecoder::new(&pack[*pos..]);

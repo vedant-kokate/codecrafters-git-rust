@@ -210,7 +210,7 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     let lines = text.lines();
     for line in lines {
         println!("Line: {}", line);
-        if line.starts_with("0032") {
+        if line.starts_with("003f") {
             let hash = &line[4..44];
             println!("Cloning repository {} with hash {}", url, hash);
         }

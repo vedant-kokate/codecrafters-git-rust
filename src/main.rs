@@ -11,7 +11,7 @@ fn get(url: &str ) -> Result<String, std::io::Error> {
         .send()
         .map_err(std::io::Error::other)?;
 
-    response.text().map_err(std::io::Error::other)
+    response.bytes().map_err(std::io::Error::other)
 }
 
 fn get_file_content_from_hash(hash: &str) -> Result<Vec<u8>, std::io::Error> {

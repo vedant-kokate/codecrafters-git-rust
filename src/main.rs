@@ -102,7 +102,7 @@ fn get_hash_for_tree(dir_path: &str) -> Result<String, std::io::Error> {
         }
         if path.is_dir() {
             let hash = get_hash_for_tree(path.to_str().unwrap())?;
-            entries.push(format!("40000 {}\0{}", name, hash));
+            entries.push(format!("a40000 {}\0{}", name, hash));
         } else if path.is_file() {
             let (hash, _) = get_hash_and_compressed_object(path.to_str().unwrap())?;
             entries.push(format!("100644 {}\0{}", name, hash));
@@ -150,6 +150,42 @@ fn write_tree(_args: Vec<String>) -> Result<(), std::io::Error> {
     Ok(())
 }
 
+fn commit_tree(args: Vec<String>) -> Result<(), std::io::Error> {
+    let tree_hash = &args[2];
+    let message = &args[args.len() - 1];
+    // commit 177\0tree 4b825dc642cb6eb9a060e54bf8d69288fbee4904
+    // parent 3b18e512dba79e4c8300dd08aeb37f8e728b8dad
+    // author John Doe <john@example.com> 1234567890 +0000
+    // committer John Doe <john@example.com> 1234567890 +0000
+
+    // Initial commit
+
+    let content_body = format!("tree {}", tree_hash);
+
+    if args.len() == 7 {
+        // git commit-tree 5b825dc642cb6eb9a060e54bf8d69288fbee4904 -p 3b18e512dba79e4c8300dd08aeb37f8e728b8dad -m "Second commit"
+        content_body.push_str(&format!("\nparent {}", &args[4]));
+    }
+    content_body.push_str(&format!("\nauthor John Doe <john@example.com> 1234567890 +0000"));
+    content_body.push_str(&format!("\ncommitter John Doe <john@example.com> 1234567890 +0000"));
+    content_body.push_str(&format!("\n\n{}", message));
+    let header = format!("commit {}\0", content.len());
+    let mut object = header.into_bytes();
+    object.extend_from_slice(content_body.as_bytes());
+    let mut hasher = sha1::Sha1::new();
+    hasher.update(&object);
+    let hash = hasher.finalize();
+    let hash = format!("{:x}", hash);
+    let mut encoder = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+    encoder.write_all(&object)?;
+    let compressed_object = encoder.finish()?;
+    fs::create_dir(format!(".git/objects/{}", &hash[0..2]))?;
+    let path = format!(".git/objects/{}/{}",&hash[0..2],&hash[2..]);
+    fs::write(path, compressed_object)?;
+    println!("{}", hash);
+    Ok(())
+}
+
 fn parse_command() -> Result<(), std::io::Error> {
     let args: Vec<String> = env::args().collect();
 
@@ -159,6 +195,7 @@ fn parse_command() -> Result<(), std::io::Error> {
         "hash-object" => hash_object(args)?,
         "ls-tree" => ls_tree(args)?,
         "write-tree" => write_tree(args)?,
+        "commit-tree" => commit_tree(args)?,
         _ => println!("unknown command: {}", args[1]),
     }
     Ok(())

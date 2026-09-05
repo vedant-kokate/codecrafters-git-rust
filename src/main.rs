@@ -215,6 +215,7 @@ fn commit_tree(args: Vec<String>) -> Result<(), std::io::Error> {
 fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     let url = &args[2];
     let repo_name = &args[3];
+    println!("Cloning {} into {}", url, repo_name);
 
     fs::create_dir(repo_name)?;
     env::set_current_dir(repo_name)?;

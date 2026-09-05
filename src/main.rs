@@ -96,13 +96,16 @@ fn get_hash_for_tree(dir_path: &str) -> Result<String, std::io::Error> {
     for entry in fs::read_dir(dir_path)? {
         let entry = entry?;
         let path = entry.path();
+        let name = path.file_name().unwrap().to_str().unwrap();
+        if name == ".git" {
+            continue;
+        }
         if path.is_dir() {
             let hash = get_hash_for_tree(path.to_str().unwrap())?;
-            let name = path.file_name().unwrap().to_str().unwrap();
+  
             entries.push(format!("040000 {}\0{}", name, hash));
         } else if path.is_file() {
             let (hash, _) = get_hash_and_compressed_object(path.to_str().unwrap())?;
-            let name = path.file_name().unwrap().to_str().unwrap();
             entries.push(format!("100644 {}\0{}", name, hash));
         }
     }

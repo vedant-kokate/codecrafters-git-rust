@@ -279,13 +279,7 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     let version = u32::from_be_bytes(pack[4..8].try_into().unwrap());
     let object_count = u32::from_be_bytes(pack[8..12].try_into().unwrap());
     let mut pos = 12;
-    let object_type = match object_type {
-        1 => "commit",
-        2 => "tree",
-        3 => "blob",
-        4 => "tag",
-        _ => panic!("unknown type"),
-    };
+    
 
     let header = format!("{} {}\0", object_type, size);
     for _ in 0..object_count {
@@ -296,6 +290,16 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
         decoder.read_to_end(&mut object_data)?;
         let consumed = decoder.total_in() as usize;
         pos += consumed;
+
+        let object_type = match object_type {
+        1 => "commit",
+        2 => "tree",
+        3 => "blob",
+        4 => "tag",
+        _ => panic!("unknown type"),
+        };
+
+
         let header = format!("{} {}\0", object_type, size);
         let mut object = header.into_bytes();
         object.extend_from_slice(&object_data);

@@ -247,7 +247,7 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     let mut hash = String::new();
     for line in lines {
         if line.starts_with("003f") {
-            hash = &line[4..44];
+            hash = line[4..44].to_string();
             break
         }
     }

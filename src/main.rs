@@ -32,8 +32,7 @@ fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
     Ok(())
 }
 
-fn hash_object(args: Vec<String>) -> Result<(), std::io::Error> {
-    let file_path = &args[3];
+fn get_hash_and_compressed_object(file_path: &str) -> Result<(String, Vec<u8>), std::io::Error> {
     let content = fs::read(file_path)?;
     let header = format!("blob {}\0", content.len());
     let mut object = header.into_bytes();
@@ -44,8 +43,13 @@ fn hash_object(args: Vec<String>) -> Result<(), std::io::Error> {
     let mut hasher = sha1::Sha1::new();
     hasher.update(&object);
     let hash = hasher.finalize();
-    println!("{:x}", hash);
-    let hash = format!("{:x}", hash);
+    Ok((format!("{:x}", hash), compressed_object))
+}
+
+fn hash_object(args: Vec<String>) -> Result<(), std::io::Error> {
+    let file_path = &args[3];
+    let (hash, compressed_object) = get_hash_and_compressed_object(file_path)?;
+    println!("{}", hash);
     fs::create_dir(format!(".git/objects/{}", &hash[0..2]))?;
     let path = format!(".git/objects/{}/{}",&hash[0..2],&hash[2..]);
     fs::write(path, compressed_object)?;
@@ -87,9 +91,55 @@ fn ls_tree(args: Vec<String>) -> Result<(), std::io::Error> {
     Ok(())
 }
 
+fn get_hash_for_tree(dir_path: &str) -> Result<String, std::io::Error> {
+    let mut entries = Vec::new();
+    for entry in fs::read_dir(dir_path)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            let hash = get_hash_for_tree(path.to_str().unwrap())?;
+            let name = path.file_name().unwrap().to_str().unwrap();
+            entries.push(format!("040000 {}\0{}", name, hash));
+        } else if path.is_file() {
+            let (hash, _) = get_hash_and_compressed_object(path.to_str().unwrap())?;
+            let name = path.file_name().unwrap().to_str().unwrap();
+            entries.push(format!("100644 {}\0{}", name, hash));
+        }
+    }
+    let mut content: Vec<u8> = Vec::new();
+    entries.sort();
+    for entry in &entries {
+        let (metadata, hash) = entry.split_once('\0').unwrap();
+        content.extend_from_slice(metadata.as_bytes());
+        content.push(0);
+
+        // hash is 40-char hex → convert to 20 raw bytes
+        for i in (0..hash.len()).step_by(2) {
+            let byte = u8::from_str_radix(&hash[i..i + 2], 16).unwrap();
+            content.push(byte);
+        }
+
+    }
+    let header = format!("tree {}\0", content.len());
+    let mut object = header.into_bytes();
+    object.extend_from_slice(&content);
+    let mut hasher = sha1::Sha1::new();
+    hasher.update(&object);
+    let hash = hasher.finalize();
+    let hash = format!("{:x}", hash);
+    let mut encoder = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+    encoder.write_all(&object)?;
+    let compressed_object = encoder.finish()?;
+    fs::create_dir(format!(".git/objects/{}", &hash[0..2]))?;
+    let path = format!(".git/objects/{}/{}",&hash[0..2],&hash[2..]);
+    fs::write(path, compressed_object)?;
+    Ok(hash)
+}
+
 fn write_tree(args: Vec<String>) -> Result<(), std::io::Error> {
     let dir_path = std::env::current_dir()?;
-    println!("Current directory: {:?}", dir_path);
+    let hash = get_hash_for_tree(dir_path.to_str().unwrap())?;
+    println!("{}", hash);
     Ok(())
 }
 

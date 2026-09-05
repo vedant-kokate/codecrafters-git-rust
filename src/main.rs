@@ -298,6 +298,23 @@ fn get_pack(url: &str, hash: &str) -> Result<Vec<u8>, std::io::Error> {
     Ok(response[pack_start..].to_vec())
 }
 
+fn get_hash_for_clone(url: &str) -> Result<String, std::io::Error> {
+    let get_url = format!("{}.git/info/refs?service=git-upload-pack", url);
+    let body = get(&get_url)?;
+    let text = String::from_utf8(body).map_err(std::io::Error::other)?;
+
+    for line in text.lines() {
+        if line.starts_with("003f") {
+            return Ok(line[4..44].to_string());
+        }
+    }
+
+    Err(std::io::Error::new(
+        std::io::ErrorKind::Other,
+        "No hash found",
+    ))
+}
+
 fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     let url = &args[2];
     let repo_name = &args[3];
@@ -307,18 +324,8 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     init();
 
     // get hash from info/refs
-    let get_url = format!("{}.git/info/refs?service=git-upload-pack", url);
-    let body = get(&get_url)?;
-    let text = String::from_utf8(body).map_err(std::io::Error::other)?;
 
-    let mut hash = String::new();
-
-    for line in text.lines() {
-        if line.starts_with("003f") {
-            hash = line[4..44].to_string();
-            break;
-        }
-    }
+    let hash = get_hash_for_clone(url)?;
 
     let pack = get_pack(url, &hash)?;
 

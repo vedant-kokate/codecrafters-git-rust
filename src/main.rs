@@ -139,7 +139,7 @@ fn get_hash_for_tree(dir_path: &str) -> Result<String, std::io::Error> {
     Ok(hash)
 }
 
-fn write_tree(args: Vec<String>) -> Result<(), std::io::Error> {
+fn write_tree(_args: Vec<String>) -> Result<(), std::io::Error> {
     let dir_path = std::env::current_dir()?;
     let hash = get_hash_for_tree(dir_path.to_str().unwrap())?;
     println!("{}", hash);

@@ -220,7 +220,7 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     fs::create_dir(repo_name)?;
     env::set_current_dir(repo_name)?;
 
-    init()?;
+    init();
 
     let get_url = format!("{}.git/info/refs?service=git-upload-pack", url);
     let body = get(&get_url)?;

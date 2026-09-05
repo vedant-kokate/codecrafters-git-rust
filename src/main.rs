@@ -63,7 +63,7 @@ fn init() {
 fn ls_tree(args: Vec<String>) -> Result<(), std::io::Error> {
     let hash = &args[3];
     let content = get_file_content_from_hash(hash)?;
-    let mut parts = content.split('\0');
+    let mut parts = content.split(where the byte == 0)
     let mut names = Vec::new();
     for part in parts {
         if part.is_empty() {

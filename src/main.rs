@@ -58,18 +58,28 @@ fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
     Ok(())
 }
 
+fn hash_and_compress(object: &[u8]) -> Result<(String, Vec<u8>), std::io::Error> {
+    let mut hasher = sha1::Sha1::new();
+    hasher.update(object);
+    let hash = format!("{:x}", hasher.finalize());
+
+    let mut encoder =
+        flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+
+    encoder.write_all(object)?;
+    let compressed = encoder.finish()?;
+
+    Ok((hash, compressed))
+}
+
 fn get_hash_and_compressed_object(file_path: &str) -> Result<(String, Vec<u8>), std::io::Error> {
     let content = fs::read(file_path)?;
+
     let header = format!("blob {}\0", content.len());
     let mut object = header.into_bytes();
     object.extend_from_slice(&content);
-    let mut encoder = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
-    encoder.write_all(&object)?;
-    let compressed_object = encoder.finish()?;
-    let mut hasher = sha1::Sha1::new();
-    hasher.update(&object);
-    let hash = hasher.finalize();
-    Ok((format!("{:x}", hash), compressed_object))
+
+    hash_and_compress(&object)
 }
 
 fn hash_object(args: Vec<String>) -> Result<(), std::io::Error> {
@@ -269,11 +279,43 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     let version = u32::from_be_bytes(pack[4..8].try_into().unwrap());
     let object_count = u32::from_be_bytes(pack[8..12].try_into().unwrap());
     let mut pos = 12;
+    let object_type = match object_type {
+        1 => "commit",
+        2 => "tree",
+        3 => "blob",
+        4 => "tag",
+        _ => panic!("unknown type"),
+    };
 
-    let (object_type, size) = parse_header(pack, &mut pos);
+    let header = format!("{} {}\0", object_type, size);
+    for _ in 0..object_count {
+        // 1. Parse object header
+        let (object_type, size) = parse_header(pack, &mut pos);
+        let mut decoder = ZlibDecoder::new(&pack[pos..]);
+        let mut object_data = Vec::new();
+        decoder.read_to_end(&mut object_data)?;
+        let consumed = decoder.total_in() as usize;
+        pos += consumed;
+        let header = format!("{} {}\0", object_type, size);
+        let mut object = header.into_bytes();
+        object.extend_from_slice(&object_data);
 
-    println!("type: {}, size: {}", object_type, size);
+        let (hash, compressed_object) = hash_and_compress(&object)?;
 
+        fs::create_dir_all(format!(".git/objects/{}", &hash[0..2]))?;
+        fs::write(
+        format!(".git/objects/{}/{}", &hash[0..2], &hash[2..]),
+            compressed_object,
+        )?;
+           
+        // 2. Decompress this object's zlib data
+        // 3. Create Git object
+        // 4. Calculate SHA
+        // 5. Write to .git/objects
+
+        // 6. pos must now point to the next object
+    }
+    
     Ok(())
 }
 

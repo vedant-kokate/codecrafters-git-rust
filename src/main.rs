@@ -235,8 +235,17 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
                 &format!("{}.git/git-upload-pack", url),
                 body.as_bytes()
             )?;
-            println!("Request: {:?}", body);
-            println!("Response: {:?}", response);
+            let pack_start = response
+                .windows(4)
+                .position(|w| w == b"PACK")
+                .unwrap();
+
+            let pack = &response[pack_start..];
+            let version = u32::from_be_bytes(pack[4..8].try_into().unwrap());
+            let object_count = u32::from_be_bytes(pack[8..12].try_into().unwrap());
+
+            println!("version: {}", version);
+            println!("objects: {}", object_count);
         }
     }
 

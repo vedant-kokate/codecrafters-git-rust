@@ -250,7 +250,9 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
             let mut pos = 12;
             println!("version: {}", version);
             println!("objects: {}", object_count);
-            println!("pack[12..]: {}", pack[12]);
+            println!("pack[12]: {}", pack[pos]);
+            println!("pack[13]: {}", pack[pos+1]);
+
         }
     }
 

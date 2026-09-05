@@ -5,6 +5,15 @@ use std::io::Read;
 use sha1::Digest;
 use std::io::Write;
 
+fn get(url: &str, params: &[(&str, &str)]) -> Result<String, reqwest::Error> {
+    let response = reqwest::blocking::Client::new()
+        .get(url)
+        .query(params)
+        .send()?;
+
+    response.text()
+}
+
 fn get_file_content_from_hash(hash: &str) -> Result<Vec<u8>, std::io::Error> {
     let dir = &hash[0..2];
     let file = &hash[2..];
@@ -186,13 +195,16 @@ fn commit_tree(args: Vec<String>) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
-    let repo_url = &args[2];
-    let repo_name = repo_url.split('/').last().unwrap();
-    print!("Cloning into '{}'...\n", repo_name);
+fn clone(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+    let url = &args[2];
+    let repo_name = url.split('/').last().unwrap();
     fs::create_dir(repo_name)?;
     env::set_current_dir(repo_name)?;
-    init();
+
+    let get_url = format!("{}.git/info/refs", url);
+    let body = get(&get_url, &[("service", "git-upload-pack")])?;
+    println!("{}", body);
+
     Ok(())
 }
 

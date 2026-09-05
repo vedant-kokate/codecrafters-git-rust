@@ -5,8 +5,7 @@ use std::io::Read;
 use sha1::Digest;
 use std::io::Write;
 
-fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
-    let hash = &args[3];
+fn get_file_content_from_hash(hash: &str) -> Result<Vec<u8>, std::io::Error> {
     let dir = &hash[0..2];
     let file = &hash[2..];
     let path = format!(".git/objects/{}/{}", dir, file);
@@ -23,7 +22,12 @@ fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
     }
     let content = &decoded_content[header_end_index + 1..];
     let content = String::from_utf8_lossy(content);
+    Ok(content.into_owned())
+}
 
+fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
+    let hash = &args[3];
+    let content = get_file_content_from_hash(hash)?;
     print!("{}", content);
     Ok(())
 }
@@ -57,6 +61,25 @@ fn init() {
     println!("Initialized git directory");
 }
 
+fn ls_tree(args: Vec<String>) -> Result<(), std::io::Error> {
+    let hash = &args[3];
+    let content = get_file_content_from_hash(hash)?;
+    let mut parts = content.split('\0');
+    let mut names = Vec::new();
+    for part in parts {
+        if part.is_empty() {
+            continue;
+        }
+        let mut part_iter = part.split_whitespace();
+        names.push(part_iter[1].to_string());
+    }
+    names.sort();
+    for name in names {
+        println!("{}", name);
+    }
+    Ok(())
+}
+
 fn parse_command() -> Result<(), std::io::Error> {
     let args: Vec<String> = env::args().collect();
 
@@ -64,6 +87,7 @@ fn parse_command() -> Result<(), std::io::Error> {
         "init" => init(),
         "cat-file" => cat_file(args)?,
         "hash-object" => hash_object(args)?,
+        "ls-tree" => ls_tree(args)?,
         _ => println!("unknown command: {}", args[1]),
     }
     Ok(())

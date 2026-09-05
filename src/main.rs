@@ -212,7 +212,7 @@ fn commit_tree(args: Vec<String>) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-ffn clone(args: Vec<String>) -> Result<(), std::io::Error> {
+fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     let url = &args[2];
     let repo_name = &args[3];
 

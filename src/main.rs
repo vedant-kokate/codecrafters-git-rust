@@ -212,6 +212,24 @@ fn commit_tree(args: Vec<String>) -> Result<(), std::io::Error> {
     Ok(())
 }
 
+fn parse_header(pack: &[u8], pos: &mut usize) -> (u8, usize) {
+    let mut byte = pack[*pos];
+    *pos += 1;
+
+    let object_type = (byte >> 4) & 7;
+    let mut size = (byte & 15) as usize;
+    let mut shift = 4;
+
+    while byte & 0x80 != 0 {
+        byte = pack[*pos];
+        *pos += 1;
+        size |= ((byte & 0x7f) as usize) << shift;
+        shift += 7;
+    }
+
+    (object_type, size)
+}
+
 fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     let url = &args[2];
     let repo_name = &args[3];
@@ -226,35 +244,35 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     let body = get(&get_url)?;
     let text = String::from_utf8(body).map_err(std::io::Error::other)?;
     let lines = text.lines();
+    let mut hash = String::new();
     for line in lines {
         if line.starts_with("003f") {
-            let hash = &line[4..44];
-
-            let body = format!(
+            hash = &line[4..44];
+            break
+        }
+    }
+    let body = format!(
                 "0032want {}\n00000009done\n0000",
                 hash
             );
 
-            let response = post(
-                &format!("{}.git/git-upload-pack", url),
-                body.as_bytes()
-            )?;
-            let pack_start = response
-                .windows(4)
-                .position(|w| w == b"PACK")
-                .unwrap();
+    let response = post(
+        &format!("{}.git/git-upload-pack", url),
+        body.as_bytes()
+    )?;
+    let pack_start = response
+        .windows(4)
+        .position(|w| w == b"PACK")
+        .unwrap();
 
-            let pack = &response[pack_start..];
-            let version = u32::from_be_bytes(pack[4..8].try_into().unwrap());
-            let object_count = u32::from_be_bytes(pack[8..12].try_into().unwrap());
-            let mut pos = 12;
-            println!("version: {}", version);
-            println!("objects: {}", object_count);
-            println!("pack[12]: {}", pack[pos]);
-            println!("pack[13]: {}", pack[pos+1]);
+    let pack = &response[pack_start..];
+    let version = u32::from_be_bytes(pack[4..8].try_into().unwrap());
+    let object_count = u32::from_be_bytes(pack[8..12].try_into().unwrap());
+    let mut pos = 12;
 
-        }
-    }
+    let (object_type, size) = parse_header(pack, &mut pos);
+
+    println!("type: {}, size: {}", object_type, size);
 
     Ok(())
 }

@@ -102,13 +102,13 @@ fn get_hash_for_tree(dir_path: &str) -> Result<String, std::io::Error> {
         }
         if path.is_dir() {
             let hash = get_hash_for_tree(path.to_str().unwrap())?;
-  
             entries.push(format!("040000 {}\0{}", name, hash));
         } else if path.is_file() {
             let (hash, _) = get_hash_and_compressed_object(path.to_str().unwrap())?;
             entries.push(format!("100644 {}\0{}", name, hash));
         }
     }
+    println!("Entries: {:?}", entries);
     let mut content: Vec<u8> = Vec::new();
     entries.sort();
     for entry in &entries {

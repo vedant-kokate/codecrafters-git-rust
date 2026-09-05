@@ -64,15 +64,21 @@ fn init() {
 fn ls_tree(args: Vec<String>) -> Result<(), std::io::Error> {
     let hash = &args[3];
     let content = get_file_content_from_hash(hash)?;
-    let mut parts = content.split(where the byte == 0)
+    let mut i = 0;
     let mut names = Vec::new();
-    for part in parts {
-        if part.is_empty() {
-            continue;
+    let mut last_space_index = 0;
+    while i < content.len() {
+        if content[i] == 0 {
+            let part = &content[last_space_index..i];
+            let part_str = String::from_utf8_lossy(part);
+            names.push(part_str.to_string());
         }
-        let mut part_iter = part.split_whitespace();
-        names.push(part_iter[1].to_string());
+        if content[i] == b' ' {
+            last_space_index = i + 1;
+        }
+        i+=1;
     }
+   
     names.sort();
     for name in names {
         println!("{}", name);

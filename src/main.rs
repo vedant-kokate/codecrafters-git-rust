@@ -169,7 +169,7 @@ fn commit_tree(args: Vec<String>) -> Result<(), std::io::Error> {
     content_body.push_str(&format!("\nauthor John Doe <john@example.com> 1234567890 +0000"));
     content_body.push_str(&format!("\ncommitter John Doe <john@example.com> 1234567890 +0000"));
     content_body.push_str(&format!("\n\n{}", message));
-    let header = format!("commit {}\0", content.len());
+    let header = format!("commit {}\0", content_body.len());
     let mut object = header.into_bytes();
     object.extend_from_slice(content_body.as_bytes());
     let mut hasher = sha1::Sha1::new();

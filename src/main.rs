@@ -87,6 +87,12 @@ fn ls_tree(args: Vec<String>) -> Result<(), std::io::Error> {
     Ok(())
 }
 
+fn write_tree(args: Vec<String>) -> Result<(), std::io::Error> {
+    let dir_path = std::env::current_dir()?
+    println!("Current directory: {:?}", dir_path);
+    Ok(())
+}
+
 fn parse_command() -> Result<(), std::io::Error> {
     let args: Vec<String> = env::args().collect();
 
@@ -95,6 +101,7 @@ fn parse_command() -> Result<(), std::io::Error> {
         "cat-file" => cat_file(args)?,
         "hash-object" => hash_object(args)?,
         "ls-tree" => ls_tree(args)?,
+        "write-tree" => write_tree(args)?,
         _ => println!("unknown command: {}", args[1]),
     }
     Ok(())

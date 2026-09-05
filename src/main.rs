@@ -240,22 +240,24 @@ fn parse_header(pack: &[u8], pos: &mut usize) -> (u8, usize) {
     (object_type, size)
 }
 
-fn unpack_object(pack: &[u8],pos: &mut usize,) -> Result<(u8, usize, Vec<u8>), std::io::Error> {
+fn unpack_object(pack: &[u8], pos: &mut usize,) -> Result<(u8, usize, Vec<u8>, Option<String>), std::io::Error> {
     let (object_type, size) = parse_header(pack, pos);
+    let mut base_hash = None;
     if object_type == 7 {
-        let base_hash = &pack[*pos..*pos + 20];
+        let hash = &pack[*pos..*pos + 20];
         *pos += 20;
 
-        println!("REF_DELTA base = {:x?}", base_hash);
+        base_hash = Some(hex::encode(hash));
     }
+
     let mut decoder = ZlibDecoder::new(&pack[*pos..]);
     let mut object_data = Vec::new();
 
     decoder.read_to_end(&mut object_data)?;
-    
+
     *pos += decoder.total_in() as usize;
 
-    Ok((object_type, size, object_data))
+    Ok((object_type, size, object_data, base_hash))
 }
 
 fn store_object(object_type: u8,size: usize,object_data: &[u8],) -> Result<(), std::io::Error> {
@@ -339,11 +341,16 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
 
     let mut pos = 12;
 
+    let mut deltas = Vec::new();
     for _ in 0..object_count {
-        let (object_type, size, object_data) =
+        let (object_type, size, object_data, base_hash) =
             unpack_object(&pack, &mut pos)?;
 
-        store_object(object_type, size, &object_data)?;
+        if let Some(base_hash) = base_hash {
+            deltas.push((base_hash, object_data));
+        } else {
+            store_object(object_type, size, &object_data)?;
+        }
     }
 
     Ok(())

@@ -114,7 +114,7 @@ fn get_hash_for_tree(dir_path: &str) -> Result<String, std::io::Error> {
         a.split_once(' ').unwrap().1
             .cmp(b.split_once(' ').unwrap().1)
     });
-    println!("Entries: {:?}", entries);
+    // println!("Entries: {:?}", entries);
     for entry in &entries {
         let (metadata, hash) = entry.split_once('\0').unwrap();
         content.extend_from_slice(metadata.as_bytes());

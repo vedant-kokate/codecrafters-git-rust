@@ -236,6 +236,7 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
                 &format!("{}.git/git-upload-pack", url),
                 body.as_bytes()
             )?;
+            println!("Request: {:?}", body);
             println!("Response: {:?}", response);
         }
     }

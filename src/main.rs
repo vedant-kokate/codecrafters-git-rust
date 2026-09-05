@@ -17,6 +17,20 @@ fn get(url: &str) -> Result<Vec<u8>, std::io::Error> {
         .map_err(std::io::Error::other)
 }
 
+fn post(url: &str, body: &[u8]) -> Result<Vec<u8>, std::io::Error> {
+    let response = reqwest::blocking::Client::new()
+        .post(url)
+        .header("Content-Type", "application/x-git-upload-pack-request")
+        .body(body.to_vec())
+        .send()
+        .map_err(std::io::Error::other)?;
+
+    response
+        .bytes()
+        .map(|b| b.to_vec())
+        .map_err(std::io::Error::other)
+}
+
 fn get_file_content_from_hash(hash: &str) -> Result<Vec<u8>, std::io::Error> {
     let dir = &hash[0..2];
     let file = &hash[2..];
@@ -209,10 +223,20 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     let text = String::from_utf8(body).map_err(std::io::Error::other)?;
     let lines = text.lines();
     for line in lines {
-        println!("Line: {}", line);
         if line.starts_with("003f") {
             let hash = &line[4..44];
-            println!("Cloning repository {} with hash {}", url, hash);
+
+            let body = format!(
+                "{:04x}want {}\n0009done\n0000",
+                4 + 5 + hash.len() + 1,
+                hash
+            );
+
+            let response = post(
+                &format!("{}.git/git-upload-pack", url),
+                body.as_bytes()
+            )?;
+            println!("Response: {:?}", response);
         }
     }
 

@@ -108,9 +108,10 @@ fn get_hash_for_tree(dir_path: &str) -> Result<String, std::io::Error> {
             entries.push(format!("100644 {}\0{}", name, hash));
         }
     }
-    println!("Entries: {:?}", entries);
+    
     let mut content: Vec<u8> = Vec::new();
     entries.sort();
+    println!("Entries: {:?}", entries);
     for entry in &entries {
         let (metadata, hash) = entry.split_once('\0').unwrap();
         content.extend_from_slice(metadata.as_bytes());

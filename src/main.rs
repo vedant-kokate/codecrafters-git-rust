@@ -206,7 +206,8 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
 
     let get_url = format!("{}.git/info/refs?service=git-upload-pack", url);
     let body = get(&get_url)?;
-    println!("Body: {:?}", body);
+    let text = String::from_utf8(body).map_err(std::io::Error::other)?;
+    println!("Body: {}", text);
 
     Ok(())
 }

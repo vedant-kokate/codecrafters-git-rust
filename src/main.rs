@@ -227,8 +227,7 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
             let hash = &line[4..44];
 
             let body = format!(
-                "{:04x}want {}\n0009done\n0000",
-                4 + 5 + hash.len() + 1,
+                "0032want {}\n00000009done\n0000",
                 hash
             );
 

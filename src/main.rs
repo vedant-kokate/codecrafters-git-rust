@@ -160,7 +160,7 @@ fn commit_tree(args: Vec<String>) -> Result<(), std::io::Error> {
 
     // Initial commit
 
-    let content_body = format!("tree {}", tree_hash);
+    let mut content_body = format!("tree {}", tree_hash);
 
     if args.len() == 7 {
         // git commit-tree 5b825dc642cb6eb9a060e54bf8d69288fbee4904 -p 3b18e512dba79e4c8300dd08aeb37f8e728b8dad -m "Second commit"

@@ -31,6 +31,68 @@ fn post(url: &str, body: &[u8]) -> Result<Vec<u8>, std::io::Error> {
         .map_err(std::io::Error::other)
 }
 
+
+fn read_size_encoding(data: &[u8], pos: &mut usize) -> usize {
+    let mut size = 0usize;
+    let mut shift = 0;
+    loop {
+        let byte = data[*pos];
+        *pos += 1;
+        size |= ((byte & 0x7f) as usize) << shift;
+        shift += 7;
+        if byte & 0x80 == 0 {
+            break;
+        }
+    }
+    size
+}
+
+fn resolve_delta(base_data: &[u8], delta_data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
+    let mut pos = 0;
+    let _base_size = read_size_encoding(delta_data, &mut pos);
+    let result_size = read_size_encoding(delta_data, &mut pos);
+
+    let mut result = Vec::with_capacity(result_size);
+
+    while pos < delta_data.len() {
+        let instruction = delta_data[pos];
+        pos += 1;
+
+        if instruction & 0x80 != 0 {
+            // copy instruction
+            let mut offset: usize = 0;
+            let mut size: usize = 0;
+
+            if instruction & 0x01 != 0 { offset |= (delta_data[pos] as usize) << 0;  pos += 1; }
+            if instruction & 0x02 != 0 { offset |= (delta_data[pos] as usize) << 8;  pos += 1; }
+            if instruction & 0x04 != 0 { offset |= (delta_data[pos] as usize) << 16; pos += 1; }
+            if instruction & 0x08 != 0 { offset |= (delta_data[pos] as usize) << 24; pos += 1; }
+
+            if instruction & 0x10 != 0 { size |= (delta_data[pos] as usize) << 0;  pos += 1; }
+            if instruction & 0x20 != 0 { size |= (delta_data[pos] as usize) << 8;  pos += 1; }
+            if instruction & 0x40 != 0 { size |= (delta_data[pos] as usize) << 16; pos += 1; }
+
+            if size == 0 {
+                size = 0x10000;
+            }
+
+            result.extend_from_slice(&base_data[offset..offset + size]);
+        } else if instruction != 0 {
+            // insert instruction: literal bytes follow in the delta stream
+            let len = instruction as usize;
+            result.extend_from_slice(&delta_data[pos..pos + len]);
+            pos += len;
+        } else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "invalid delta instruction (0x00)",
+            ));
+        }
+    }
+
+    Ok(result)
+}
+
 fn get_file_content_from_hash(hash: &str) -> Result<Vec<u8>, std::io::Error> {
     let dir = &hash[0..2];
     let file = &hash[2..];
@@ -322,6 +384,8 @@ fn get_hash_for_clone(url: &str) -> Result<String, std::io::Error> {
     ))
 }
 
+use std::collections::HashMap;
+
 fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     let url = &args[2];
     let repo_name = &args[3];
@@ -330,30 +394,73 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     env::set_current_dir(repo_name)?;
     init();
 
-    // get hash from info/refs
-
     let hash = get_hash_for_clone(url)?;
-
     let pack = get_pack(url, &hash)?;
 
-    let object_count =
-        u32::from_be_bytes(pack[8..12].try_into().unwrap());
-
+    let object_count = u32::from_be_bytes(pack[8..12].try_into().unwrap());
     let mut pos = 12;
 
+    // hash -> (type_num, content)
+    let mut objects: HashMap<String, (u8, Vec<u8>)> = HashMap::new();
     let mut deltas = Vec::new();
+
     for _ in 0..object_count {
-        let (object_type, size, object_data, base_hash) =
-            unpack_object(&pack, &mut pos)?;
+        let (object_type, size, object_data, base_hash) = unpack_object(&pack, &mut pos)?;
 
         if let Some(base_hash) = base_hash {
             deltas.push((base_hash, object_data));
         } else {
             store_object(object_type, size, &object_data)?;
+            let (hash, _) = hash_and_compress(&{
+                let mut o = format!("{} {}\0", type_name(object_type), size).into_bytes();
+                o.extend_from_slice(&object_data);
+                o
+            })?;
+            objects.insert(hash, (object_type, object_data));
         }
     }
 
+    let mut pending = deltas;
+    while !pending.is_empty() {
+        let mut still_pending = Vec::new();
+        let mut progressed = false;
+
+        for (base_hash, delta_data) in pending {
+            if let Some((obj_type, base_content)) = objects.get(&base_hash) {
+                let resolved = resolve_delta(base_content, &delta_data)?;
+                store_object(*obj_type, resolved.len(), &resolved)?;
+
+                let mut o = format!("{} {}\0", type_name(*obj_type), resolved.len()).into_bytes();
+                o.extend_from_slice(&resolved);
+                let (resolved_hash, _) = hash_and_compress(&o)?;
+
+                objects.insert(resolved_hash, (*obj_type, resolved));
+                progressed = true;
+            } else {
+                still_pending.push((base_hash, delta_data));
+            }
+        }
+
+        if !progressed {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "couldn't resolve all deltas — missing base object",
+            ));
+        }
+        pending = still_pending;
+    }
+
     Ok(())
+}
+
+fn type_name(t: u8) -> &'static str {
+    match t {
+        1 => "commit",
+        2 => "tree",
+        3 => "blob",
+        4 => "tag",
+        _ => panic!("unknown type"),
+    }
 }
 
 

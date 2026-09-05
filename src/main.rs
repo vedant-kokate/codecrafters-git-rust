@@ -21,13 +21,12 @@ fn get_file_content_from_hash(hash: &str) -> Result<Vec<u8>, std::io::Error> {
         }
     }
     let content = &decoded_content[header_end_index + 1..];
-    let content = String::from_utf8_lossy(content);
-    Ok(content.into_owned())
+    Ok(content.to_vec())
 }
 
 fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
     let hash = &args[3];
-    let content = get_file_content_from_hash(hash)?;
+    let content = String::from_utf8_lossy(&get_file_content_from_hash(hash)?);
     print!("{}", content);
     Ok(())
 }

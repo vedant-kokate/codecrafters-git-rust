@@ -247,9 +247,10 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
             let pack = &response[pack_start..];
             let version = u32::from_be_bytes(pack[4..8].try_into().unwrap());
             let object_count = u32::from_be_bytes(pack[8..12].try_into().unwrap());
-
+            let mut pos = 12;
             println!("version: {}", version);
             println!("objects: {}", object_count);
+            println!("pack[12..]: {}", pack[12]);
         }
     }
 

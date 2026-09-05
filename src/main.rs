@@ -209,7 +209,10 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     let text = String::from_utf8(body).map_err(std::io::Error::other)?;
     let lines = text.lines();
     for line in lines {
-        println!("{}", line);
+        if line.starts_with("0032") {
+            let hash = &line[4..44];
+            println!("Cloning repository {} with hash {}", url, hash);
+        }
     }
 
     Ok(())

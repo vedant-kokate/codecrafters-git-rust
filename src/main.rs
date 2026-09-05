@@ -26,7 +26,8 @@ fn get_file_content_from_hash(hash: &str) -> Result<Vec<u8>, std::io::Error> {
 
 fn cat_file(args: Vec<String>) -> Result<(),std::io::Error> {
     let hash = &args[3];
-    let content = String::from_utf8_lossy(&get_file_content_from_hash(hash)?);
+    let content = get_file_content_from_hash(hash)?;
+    let content = String::from_utf8_lossy(&content);
     print!("{}", content);
     Ok(())
 }

@@ -72,6 +72,7 @@ fn ls_tree(args: Vec<String>) -> Result<(), std::io::Error> {
             let part = &content[last_space_index..i];
             let part_str = String::from_utf8_lossy(part);
             names.push(part_str.to_string());
+            i+=20
         }
         if content[i] == b' ' {
             last_space_index = i + 1;

@@ -5,13 +5,14 @@ use std::io::Read;
 use sha1::Digest;
 use std::io::Write;
 
-fn get(url: &str, params: &[(&str, &str)]) -> Result<String, reqwest::Error> {
+fn get(url: &str, params: &[(&str, &str)]) -> Result<String, std::io::Error> {
     let response = reqwest::blocking::Client::new()
         .get(url)
         .query(params)
-        .send()?;
+        .send()
+        .map_err(std::io::Error::other)?;
 
-    response.text()
+    response.text().map_err(std::io::Error::other)
 }
 
 fn get_file_content_from_hash(hash: &str) -> Result<Vec<u8>, std::io::Error> {
@@ -195,7 +196,7 @@ fn commit_tree(args: Vec<String>) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn clone(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     let url = &args[2];
     let repo_name = url.split('/').last().unwrap();
     fs::create_dir(repo_name)?;

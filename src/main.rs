@@ -4,6 +4,7 @@ use flate2::read::ZlibDecoder;
 use std::io::Read;
 use sha1::Digest;
 use std::io::Write;
+use std::collections::HashMap;
 
 fn get(url: &str) -> Result<Vec<u8>, std::io::Error> {
     let response = reqwest::blocking::Client::new()
@@ -384,7 +385,73 @@ fn get_hash_for_clone(url: &str) -> Result<String, std::io::Error> {
     ))
 }
 
-use std::collections::HashMap;
+fn parse_tree_entries(content: &[u8]) -> Vec<(String, String, [u8; 20])> {
+    let mut entries = Vec::new();
+    let mut i = 0;
+    while i < content.len() {
+        let space = content[i..].iter().position(|&b| b == b' ').unwrap() + i;
+        let mode = String::from_utf8_lossy(&content[i..space]).to_string();
+
+        let null = content[space..].iter().position(|&b| b == 0).unwrap() + space;
+        let name = String::from_utf8_lossy(&content[space + 1..null]).to_string();
+
+        let mut sha = [0u8; 20];
+        sha.copy_from_slice(&content[null + 1..null + 21]);
+
+        entries.push((mode, name, sha));
+        i = null + 21;
+    }
+    entries
+}
+
+fn checkout_tree(tree_hash: &str, dir: &std::path::Path) -> Result<(), std::io::Error> {
+    let (_, content) = read_object(tree_hash)?;
+
+    for (mode, name, sha) in parse_tree_entries(&content) {
+        let sha_hex = sha.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+        let path = dir.join(&name);
+
+        if mode == "40000" {
+            fs::create_dir_all(&path)?;
+            checkout_tree(&sha_hex, &path)?;
+        } else {
+            let (_, blob_content) = read_object(&sha_hex)?;
+            fs::write(&path, blob_content)?;
+
+            #[cfg(unix)]
+            if mode == "100755" {
+                use std::os::unix::fs::PermissionsExt;
+                fs::set_permissions(&path, fs::Permissions::from_mode(0o755))?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn read_object(hash: &str) -> Result<(String, Vec<u8>), std::io::Error> {
+    let path = format!(".git/objects/{}/{}", &hash[0..2], &hash[2..]);
+    let content = fs::read(path)?;
+    let mut decoder = ZlibDecoder::new(&content[..]);
+    let mut decoded = Vec::new();
+    decoder.read_to_end(&mut decoded)?;
+
+    let header_end = decoded.iter().position(|&b| b == 0).unwrap();
+    let header = String::from_utf8_lossy(&decoded[..header_end]).to_string();
+    let obj_type = header.split(' ').next().unwrap().to_string();
+
+    Ok((obj_type, decoded[header_end + 1..].to_vec()))
+}
+
+
+fn checkout_commit(hash: &str, dir: &std::path::Path) -> Result<(), std::io::Error> {
+    let (_, content) = read_object(commit_hash)?;
+    let content_str = String::from_utf8_lossy(&content);
+    let tree_line = content_str.lines().next().unwrap(); // "tree <hash>"
+    let tree_hash = tree_line.split(' ').nth(1).unwrap();
+    println!("Checking out tree: {}", tree_hash);
+    checkout_tree(tree_hash, dir)
+    Ok(())
+}
 
 fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     let url = &args[2];
@@ -449,7 +516,7 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
         }
         pending = still_pending;
     }
-
+    checkout_commit(&hash, &env::current_dir()?)?;
     Ok(())
 }
 

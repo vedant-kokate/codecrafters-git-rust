@@ -186,6 +186,16 @@ fn commit_tree(args: Vec<String>) -> Result<(), std::io::Error> {
     Ok(())
 }
 
+fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
+    let repo_url = &args[2];
+    let repo_name = repo_url.split('/').last().unwrap();
+    let repo_name = repo_name.strip_suffix(".git").unwrap_or(repo_name);
+    fs::create_dir(repo_name)?;
+    env::set_current_dir(repo_name)?;
+    init();
+    Ok(())
+}
+
 fn parse_command() -> Result<(), std::io::Error> {
     let args: Vec<String> = env::args().collect();
 
@@ -196,6 +206,7 @@ fn parse_command() -> Result<(), std::io::Error> {
         "ls-tree" => ls_tree(args)?,
         "write-tree" => write_tree(args)?,
         "commit-tree" => commit_tree(args)?,
+        "clone" => clone(args)?,
         _ => println!("unknown command: {}", args[1]),
     }
     Ok(())

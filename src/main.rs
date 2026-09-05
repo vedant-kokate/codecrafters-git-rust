@@ -88,7 +88,7 @@ fn ls_tree(args: Vec<String>) -> Result<(), std::io::Error> {
 }
 
 fn write_tree(args: Vec<String>) -> Result<(), std::io::Error> {
-    let dir_path = std::env::current_dir()?
+    let dir_path = std::env::current_dir()?;
     println!("Current directory: {:?}", dir_path);
     Ok(())
 }

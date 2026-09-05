@@ -240,88 +240,80 @@ fn parse_header(pack: &[u8], pos: &mut usize) -> (u8, usize) {
     (object_type, size)
 }
 
-fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
-    let url = &args[2];
-    let repo_name = &args[3];
-    println!("Cloning {} into {}", url, repo_name);
+fn unpack_object(pack: &[u8],pos: &mut usize,) -> Result<(u8, usize, Vec<u8>), std::io::Error> {
+    let (object_type, size) = parse_header(pack, pos);
 
-    fs::create_dir(repo_name)?;
-    env::set_current_dir(repo_name)?;
+    let mut decoder = ZlibDecoder::new(&pack[*pos..]);
+    let mut object_data = Vec::new();
 
-    init();
+    decoder.read_to_end(&mut object_data)?;
 
-    let get_url = format!("{}.git/info/refs?service=git-upload-pack", url);
-    let body = get(&get_url)?;
-    let text = String::from_utf8(body).map_err(std::io::Error::other)?;
-    let lines = text.lines();
-    let mut hash = String::new();
-    for line in lines {
-        if line.starts_with("003f") {
-            hash = line[4..44].to_string();
-            break
-        }
-    }
-    let body = format!(
-                "0032want {}\n00000009done\n0000",
-                hash
-            );
+    *pos += decoder.total_in() as usize;
 
-    let response = post(
-        &format!("{}.git/git-upload-pack", url),
-        body.as_bytes()
-    )?;
-    let pack_start = response
-        .windows(4)
-        .position(|w| w == b"PACK")
-        .unwrap();
+    Ok((object_type, size, object_data))
+}
 
-    let pack = &response[pack_start..];
-    let version = u32::from_be_bytes(pack[4..8].try_into().unwrap());
-    let object_count = u32::from_be_bytes(pack[8..12].try_into().unwrap());
-    let mut pos = 12;
-    
-
-    let header = format!("{} {}\0", object_type, size);
-    for _ in 0..object_count {
-        // 1. Parse object header
-        let (object_type, size) = parse_header(pack, &mut pos);
-        let mut decoder = ZlibDecoder::new(&pack[pos..]);
-        let mut object_data = Vec::new();
-        decoder.read_to_end(&mut object_data)?;
-        let consumed = decoder.total_in() as usize;
-        pos += consumed;
-
-        let object_type = match object_type {
+fn store_object(object_type: u8,size: usize,object_data: &[u8],) -> Result<(), std::io::Error> {
+    let object_type = match object_type {
         1 => "commit",
         2 => "tree",
         3 => "blob",
         4 => "tag",
         _ => panic!("unknown type"),
-        };
+    };
 
+    let header = format!("{} {}\0", object_type, size);
 
-        let header = format!("{} {}\0", object_type, size);
-        let mut object = header.into_bytes();
-        object.extend_from_slice(&object_data);
+    let mut object = header.into_bytes();
+    object.extend_from_slice(object_data);
 
-        let (hash, compressed_object) = hash_and_compress(&object)?;
+    let (hash, compressed) = hash_and_compress(&object)?;
 
-        fs::create_dir_all(format!(".git/objects/{}", &hash[0..2]))?;
-        fs::write(
-        format!(".git/objects/{}/{}", &hash[0..2], &hash[2..]),
-            compressed_object,
-        )?;
-           
-        // 2. Decompress this object's zlib data
-        // 3. Create Git object
-        // 4. Calculate SHA
-        // 5. Write to .git/objects
+    fs::create_dir_all(format!(".git/objects/{}", &hash[..2]))?;
 
-        // 6. pos must now point to the next object
-    }
-    
+    fs::write(
+        format!(".git/objects/{}/{}", &hash[..2], &hash[2..]),
+        compressed,
+    )?;
+
     Ok(())
 }
+
+fn get_pack(url: &str, hash: &str) -> Result<Vec<u8>, std::io::Error> {
+    let body = format!(
+        "0032want {}\n00000009done\n0000",
+        hash
+    );
+
+    let response = post(
+        &format!("{}.git/git-upload-pack", url),
+        body.as_bytes(),
+    )?;
+
+    let pack_start = response
+        .windows(4)
+        .position(|w| w == b"PACK")
+        .unwrap();
+
+    Ok(response[pack_start..].to_vec())
+}
+
+fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
+    let pack = get_pack(&url, &hash)?;
+    let object_count =
+        u32::from_be_bytes(pack[8..12].try_into().unwrap());
+
+    let mut pos = 12;
+
+    for _ in 0..object_count {
+        let (object_type, size, object_data) =
+            unpack_object(pack, &mut pos)?;
+
+        store_object(object_type, size, &object_data)?;
+    }
+}
+
+
 
 fn parse_command() -> Result<(), std::io::Error> {
     let args: Vec<String> = env::args().collect();

@@ -189,7 +189,7 @@ fn commit_tree(args: Vec<String>) -> Result<(), std::io::Error> {
 fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     let repo_url = &args[2];
     let repo_name = repo_url.split('/').last().unwrap();
-    let repo_name = repo_name.strip_suffix(".git").unwrap_or(repo_name);
+    print("Cloning into '{}'...\n", repo_name);
     fs::create_dir(repo_name)?;
     env::set_current_dir(repo_name)?;
     init();

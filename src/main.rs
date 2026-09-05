@@ -5,10 +5,9 @@ use std::io::Read;
 use sha1::Digest;
 use std::io::Write;
 
-fn get(url: &str, params: &[(&str, &str)]) -> Result<String, std::io::Error> {
+fn get(url: &str ) -> Result<String, std::io::Error> {
     let response = reqwest::blocking::Client::new()
         .get(url)
-        .query(params)
         .send()
         .map_err(std::io::Error::other)?;
 
@@ -202,8 +201,8 @@ fn clone(args: Vec<String>) -> Result<(), std::io::Error> {
     fs::create_dir(repo_name)?;
     env::set_current_dir(repo_name)?;
 
-    let get_url = format!("{}.git/info/refs", url);
-    let body = get(&get_url, &[("service", "git-upload-pack")])?;
+    let get_url = format!("{}.git/info/refs?service=git-upload-pack", url);
+    let body = get(&get_url)?;
     println!("{}", body);
 
     Ok(())
